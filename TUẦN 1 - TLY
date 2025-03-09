@@ -1,0 +1,63 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+from PIL import Image
+from google.colab import files
+import ipywidgets as widgets
+
+# Kiểm tra ảnh hợp lệ
+def is_image(file_path):
+    return any(file_path.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff'])
+
+# Lưu bảng màu dưới dạng ảnh
+def save_palette(colors, file_format):
+    plt.figure(figsize=(8, 2))
+    plt.imshow([colors])
+    plt.axis('off')
+    file_name = f'palette.{file_format}'
+    plt.savefig(file_name, format=file_format)
+    files.download(file_name)
+
+# Trích xuất bảng màu từ ảnh
+def extract_palette(image_path, k):
+    image = np.array(Image.open(image_path).convert('RGB')).reshape((-1, 3))
+    kmeans = KMeans(n_clusters=k).fit(image)
+    colors = kmeans.cluster_centers_.astype(int)
+    return colors
+
+# Xử lý ảnh sau khi tải lên
+def upload_and_process_image(change):
+    uploaded = change['new']
+    image_path = list(uploaded.keys())[0]
+    if not is_image(image_path):
+        print("Tệp không phải ảnh.")
+    else:
+        global palette
+        palette = extract_palette(image_path, k_value.value)
+        
+        # Hiển thị bảng màu sau khi tạo
+        plt.figure(figsize=(8, 2))
+        plt.imshow([palette])
+        plt.axis('off')
+        plt.show()
+
+        # Hiển thị các nút tải xuống
+        display(download_button)
+        display(format_dropdown)
+
+# Tải bảng màu xuống
+def download_palette(b):
+    save_palette(palette, format_dropdown.value)
+
+# Giao diện người dùng
+k_value = widgets.IntSlider(value=5, min=1, max=20, description='Số màu (k):', continuous_update=False)
+upload_button = widgets.FileUpload(description="Choose files", accept="image/*")
+download_button = widgets.Button(description="Tải bảng màu xuống")
+format_dropdown = widgets.Dropdown(options=['png', 'jpeg', 'bmp', 'gif', 'tiff'], value='png', description='Chọn định dạng:')
+
+# Hiển thị ô nhập số lượng màu và các nút
+display(k_value)
+display(upload_button)
+
+upload_button.observe(upload_and_process_image, names='value')
+download_button.on_click(download_palette)
